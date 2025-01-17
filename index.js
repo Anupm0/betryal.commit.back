@@ -1,4 +1,3 @@
-
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
@@ -6,13 +5,16 @@ const express = require('express');
 const http = require('http');
 const app = express();
 const cors = require('cors');
-const { Server } = require("socket.io")
+const { Server } = require("socket.io");
 
-var roomid;
+// Configure Express for large payloads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors());
 
 const server = http.createServer(app);
 
+// Configure Socket.IO with increased buffer size
 const io = new Server(server, {
   cors: { 
     origins: '*:*', 
@@ -21,60 +23,47 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e8, // 100 MB
   pingTimeout: 60000, // 60 seconds
   transports: ['websocket', 'polling'],
-  allowUpgrades: true,
-  upgradeTimeout: 30000,
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    skipMiddlewares: true,
+  }
 });
 
-server.timeout = 300000;
-
+var roomid;
 
 io.on('connection', (socket) => {
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
+  console.log('Client connected');
   
-  socket.conn.on('packet', (packet) => {
-    if (packet.type === 'error') {
-      console.error('Packet error:', packet.data);
-    }
-  });
+  // Increase socket buffer size
+  socket.setMaxListeners(20);
   
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
 
   socket.on('joinRoom', (room) => {
-    socket.join(room)
-    roomid = room
+    socket.join(room);
+    roomid = room;
   });
 
-// Inside the `on('message')` event in server.js
-socket.on('message', (message) => {
-    try {
-        const parsedMessage = JSON.parse(message);
-        const { commands, data } = parsedMessage;
+  socket.on('message', (message) => {
+    io.to(roomid).emit('message', message);
+  });
 
-        // Emit to clients in the room
-        io.to(roomid).emit('response', JSON.stringify({ type: commands, data }));
+  socket.on('response', (message) => {
+    io.to(roomid).emit('response', message);
+  });
 
-        // Handle image uploads or specific commands (if needed)
-        if (commands === 'image_data') {
-            console.log('Image received, processing...');
-        }
-    } catch (error) {
-        console.error('Error processing message:', error);
-    }
+  // Error handling for large file transfers
+  socket.conn.on('error', (error) => {
+    console.error('Socket connection error:', error);
+    socket.conn.transport.close();
+  });
 });
 
-socket.on('response', (message) => {
-  io.to(roomid).emit('response', message);
-});
-  
-  
-});
-
-
-const PORT = 3001;
+// Increase server timeout
+server.timeout = 600000; // 10 minutes
+const PORT = 8080;
 server.listen(PORT, () => {
   console.log(`Socket.IO Server listening on port ${PORT}`);
 });
