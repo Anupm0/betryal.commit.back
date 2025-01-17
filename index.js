@@ -13,10 +13,32 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-const io = new Server(server, { cors: { origins: '*:*', methods: ["GET", "POST"] } });
+const io = new Server(server, {
+  cors: { 
+    origins: '*:*', 
+    methods: ["GET", "POST"]
+  },
+  maxHttpBufferSize: 1e8, // 100 MB
+  pingTimeout: 60000, // 60 seconds
+  transports: ['websocket', 'polling'],
+  allowUpgrades: true,
+  upgradeTimeout: 30000,
+});
+
+server.timeout = 300000;
+
+
 io.on('connection', (socket) => {
-  console.log('Client connected');
-   
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+  
+  socket.conn.on('packet', (packet) => {
+    if (packet.type === 'error') {
+      console.error('Packet error:', packet.data);
+    }
+  });
+  
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
