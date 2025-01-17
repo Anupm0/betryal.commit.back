@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
 
 // Increase server timeout
 server.timeout = 600000; // 10 minutes
-const PORT = 8080;
+const PORT = 3001;
 server.listen(PORT, () => {
   console.log(`Socket.IO Server listening on port ${PORT}`);
 });
