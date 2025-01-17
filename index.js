@@ -1,82 +1,44 @@
-const Fastify = require('fastify');
-const path = require('path');
+
 const fs = require('fs');
-const multer = require('fastify-multer');
-const cors = require('@fastify/cors');
-const { Server } = require('socket.io');
+const multer = require('multer');
+const path = require('path');
+const express = require('express');
 const http = require('http');
+const app = express();
+const cors = require('cors');
+const { Server } = require("socket.io")
 
-const app = Fastify({
-  logger: {
-    level: 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname'
-      }
-    }
-  },
-});
+var roomid;
+app.use(cors());
 
-// Middleware
-app.register(multer.contentParser);
-app.register(cors, { origin: '*', methods: '*' });
+const server = http.createServer(app);
 
-// HTTP Server and Socket.IO Initialization
-const server = http.createServer(app.server);
-const io = new Server(server, { cors: { origin: '*', methods: '*' } });
-
-let roomid;
-
+const io = new Server(server, { cors: { origins: '*:*', methods: ["GET", "POST"] } });
 io.on('connection', (socket) => {
   console.log('Client connected');
-
+   
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
 
   socket.on('joinRoom', (room) => {
-    socket.join(room);
-    roomid = room;
+    socket.join(room)
+    roomid = room
   });
 
-  socket.on('message', (message) => {
-    io.to(roomid).emit('message', message);
-  });
-
-  socket.on('response', (message) => {
-    io.to(roomid).emit('response', message);
-  });
+socket.on('message', (message) => {
+  io.to(roomid).emit('message', message);
 });
 
-// Handle large file uploads
-const upload = multer({
-  storage: multer.memoryStorage(), // Store files in memory
-  limits: { fileSize: 500 * 1024 * 1024 }, // Set limit to 500MB
+socket.on('response', (message) => {
+  io.to(roomid).emit('response', message);
+});
+  
+  
 });
 
-app.post('/upload', { preHandler: upload.single('file') }, async (req, reply) => {
-  try {
-    const fileBuffer = req.file.buffer;
-    const filePath = path.join(__dirname, 'uploads', req.file.originalname);
 
-    // Save file to disk
-    fs.writeFileSync(filePath, fileBuffer);
-    reply.code(200).send({ status: 'success', message: 'File uploaded successfully' });
-  } catch (error) {
-    reply.code(500).send({ status: 'error', message: 'File upload failed', error: error.message });
-  }
+const PORT = 8080;
+server.listen(PORT, () => {
+  console.log(`Socket.IO Server listening on port ${PORT}`);
 });
-
-const start = async () => {
-  try {
-    await app.listen({ port: 3001, host: '0.0.0.0' });
-    console.log('Server is running on http://0.0.0.0:3001');
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-};
-
-start();
