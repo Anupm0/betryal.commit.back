@@ -6,15 +6,27 @@ const cors = require('@fastify/cors');
 const { Server } = require('socket.io');
 const http = require('http');
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+
+  logger: {
+    level: 'info',
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'SYS:standard',
+        ignore: 'pid,hostname'
+      }
+    }
+  },
+});
 
 // Middleware
 app.register(multer.contentParser);
-app.register(cors, { origin: '*', methods: ['GET', 'POST'] });
+app.register(cors, { origin: '*', methods: "*" });
 
 // HTTP Server and Socket.IO Initialization
 const server = http.createServer(app.server);
-const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+const io = new Server(server, { cors: { origin: '*', methods:"*" } });
 
 let roomid;
 
@@ -58,12 +70,15 @@ app.post('/upload', { preHandler: upload.single('file') }, async (req, reply) =>
   }
 });
 
-// Start server
-const PORT = 8080;
-server.listen(PORT, (err) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
+
+const start = async () => {
+  try {
+      await app.listen({ port: 3001 , host: '0.0.0.0' });
+  } catch (err) {
+      app.log.error(err);
+      process.exit(1);
   }
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+};
+
+
+start();
