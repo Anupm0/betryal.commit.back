@@ -26,8 +26,22 @@ io.on('connection', (socket) => {
     roomid = room
   });
 
+// Inside the `on('message')` event in server.js
 socket.on('message', (message) => {
-  io.to(roomid).emit('message', message);
+    try {
+        const parsedMessage = JSON.parse(message);
+        const { commands, data } = parsedMessage;
+
+        // Emit to clients in the room
+        io.to(roomid).emit('response', JSON.stringify({ type: commands, data }));
+
+        // Handle image uploads or specific commands (if needed)
+        if (commands === 'image_data') {
+            console.log('Image received, processing...');
+        }
+    } catch (error) {
+        console.error('Error processing message:', error);
+    }
 });
 
 socket.on('response', (message) => {
