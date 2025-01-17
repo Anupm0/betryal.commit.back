@@ -7,7 +7,6 @@ const { Server } = require('socket.io');
 const http = require('http');
 
 const app = Fastify({
-
   logger: {
     level: 'info',
     transport: {
@@ -22,11 +21,11 @@ const app = Fastify({
 
 // Middleware
 app.register(multer.contentParser);
-app.register(cors, { origin: '*', methods: "*" });
+app.register(cors, { origin: '*', methods: '*' });
 
 // HTTP Server and Socket.IO Initialization
 const server = http.createServer(app.server);
-const io = new Server(server, { cors: { origin: '*', methods:"*" } });
+const io = new Server(server, { cors: { origin: '*', methods: '*' } });
 
 let roomid;
 
@@ -70,15 +69,14 @@ app.post('/upload', { preHandler: upload.single('file') }, async (req, reply) =>
   }
 });
 
-
 const start = async () => {
   try {
-      await app.listen({ port: 3001 , host: '0.0.0.0' });
+    await app.listen({ port: 3001, host: '0.0.0.0' });
+    console.log('Server is running on http://0.0.0.0:3001');
   } catch (err) {
-      app.log.error(err);
-      process.exit(1);
+    app.log.error(err);
+    process.exit(1);
   }
 };
-
 
 start();
