@@ -1,26 +1,41 @@
-const Fastify = require('fastify');
-const path = require('path');
 const fs = require('fs');
-const multer = require('fastify-multer');
-const cors = require('@fastify/cors');
-const { Server } = require('socket.io');
+const multer = require('multer');
+const path = require('path');
+const express = require('express');
 const http = require('http');
+const app = express();
+const cors = require('cors');
+const { Server } = require("socket.io");
 
-const app = Fastify({ logger: true });
+// Configure Express for large payloads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cors());
 
-// Middleware
-app.register(multer.contentParser);
-app.register(cors, { origin: '*', methods: ['GET', 'POST'] });
+const server = http.createServer(app);
 
-// HTTP Server and Socket.IO Initialization
-const server = http.createServer(app.server);
-const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
+// Configure Socket.IO with increased buffer size
+const io = new Server(server, {
+  cors: { 
+    origins: '*:*', 
+    methods: ["GET", "POST"]
+  },
+  maxHttpBufferSize: 1e8, // 100 MB
+  pingTimeout: 60000, // 60 seconds
+  transports: ['websocket', 'polling'],
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    skipMiddlewares: true,
+  }
+});
 
-let roomid;
+var roomid;
 
 io.on('connection', (socket) => {
   console.log('Client connected');
-
+  
+  socket.setMaxListeners(20);
+  
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
@@ -37,33 +52,17 @@ io.on('connection', (socket) => {
   socket.on('response', (message) => {
     io.to(roomid).emit('response', message);
   });
+
+  // Error handling for large file transfers
+  socket.conn.on('error', (error) => {
+    console.error('Socket connection error:', error);
+    socket.conn.transport.close();
+  });
 });
 
-// Handle large file uploads
-const upload = multer({
-  storage: multer.memoryStorage(), // Store files in memory
-  limits: { fileSize: 500 * 1024 * 1024 }, // Set limit to 500MB
-});
-
-app.post('/upload', { preHandler: upload.single('file') }, async (req, reply) => {
-  try {
-    const fileBuffer = req.file.buffer;
-    const filePath = path.join(__dirname, 'uploads', req.file.originalname);
-
-    // Save file to disk
-    fs.writeFileSync(filePath, fileBuffer);
-    reply.code(200).send({ status: 'success', message: 'File uploaded successfully' });
-  } catch (error) {
-    reply.code(500).send({ status: 'error', message: 'File upload failed', error: error.message });
-  }
-});
-
-// Start server
-const PORT = 8080;
-server.listen(PORT, (err) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
-  }
-  console.log(`Server running at http://localhost:${PORT}`);
+// Increase server timeout
+server.timeout = 600000; // 10 minutes
+const PORT = 3001;
+server.listen(PORT, () => {
+  console.log(`Socket.IO Server listening on port ${PORT}`);
 });

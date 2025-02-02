@@ -1,28 +1,28 @@
 {
-    "name": "socketio-fastify-server",
-    "version": "1.0.0",
-    "description": "A Fastify server with Socket.IO integration and support for large file uploads.",
-    "main": "index.js",
-    "scripts": {
+  "name": "betriyal.commit-server",
+  "version": "1.0.0",
+  "description": "An Express server with Socket.IO integration and support for large file uploads.",
+  "main": "index.js",
+  "scripts": {
       "start": "node index.js",
       "dev": "nodemon index.js"
-    },
-    "keywords": [
-      "fastify",
+  },
+  "keywords": [
+      "express",
       "socket.io",
       "file-upload",
       "reliable-server"
-    ],
-    "author": "Your Name",
-    "license": "MIT",
-    "dependencies": {
-      "@fastify/cors": "^8.1.0",
-      "fastify": "^4.22.0",
-      "fastify-multer": "^4.4.0",
-      "socket.io": "^4.7.1"
-    },
-    "devDependencies": {
+  ],
+  "author": "Botsailer",
+  "license": "MIT",
+  "dependencies": {
+      "express": "^4.18.2",
+      "cors": "^2.8.5",
+      "multer": "^1.4.5-lts.1",
+      "socket.io": "^4.7.1",
+      "http": "^0.0.1-security"
+  },
+  "devDependencies": {
       "nodemon": "^3.0.1"
-    }
   }
-  
+}
